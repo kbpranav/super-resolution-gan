@@ -16,6 +16,7 @@ import numpy as np
 import os
 import itertools
 
+print("Starting....")
 
 cuda = torch.cuda.is_available()
 hr_shape = (256, 256)
@@ -46,14 +47,16 @@ optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0002, betas=(0.9
 
 Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
 
+print("Loading data....")
+
 dataloader = DataLoader(
     SRDataset("../data/DIV2K_train_HR/", hr_shape=hr_shape),
-    batch_size=2,
+    batch_size=4,
     shuffle=True,
 )
 
 # Training the model
-n_epochs = 50
+n_epochs = 3
 
 if not os.path.exists("saved_models"):
     os.makedirs("saved_models")
@@ -61,12 +64,14 @@ if not os.path.exists("saved_models"):
 if not os.path.exists("images"):
     os.makedirs("images")        
 
+print("Training....")
+
 for epoch in range(n_epochs):
     for i, imgs in enumerate(dataloader):
 
         # Configure model input
-        imgs_lr = Variable(imgs["lr"].type(Tensor))
-        imgs_hr = Variable(imgs["hr"].type(Tensor))
+        imgs_lr = Variable(imgs["lr"].type(Tensor)).cuda()
+        imgs_hr = Variable(imgs["hr"].type(Tensor)).cuda()
 
         # Adversarial ground truths
         valid = Variable(Tensor(np.ones((imgs_lr.size(0), *discriminator.output_shape))), requires_grad=False)
@@ -121,7 +126,7 @@ for epoch in range(n_epochs):
         )
 
         batches_done = epoch * len(dataloader) + i
-        if batches_done % 5 == 0:
+        if batches_done % 50 == 0:
             # Save image grid with upsampled inputs and outputs
             imgs_lr = nn.functional.interpolate(imgs_lr, scale_factor=4)
             gen_hr = make_grid(gen_hr, nrow=1, normalize=True)
@@ -129,7 +134,7 @@ for epoch in range(n_epochs):
             img_grid = torch.cat((imgs_lr, gen_hr), -1)
             save_image(img_grid, "images/%d.png" % batches_done, normalize=False)
         
-        if batches_done % 5 == 0:
-            torch.save(generator.state_dict(), "saved_models/generator_%d.pth" % epoch)
-            torch.save(discriminator.state_dict(), "saved_models/discriminator_%d.pth" % epoch)
-        
+    if epoch % 2 == 0:
+        torch.save(generator.state_dict(), "saved_models/generator_%d.pth" % epoch)
+        torch.save(discriminator.state_dict(), "saved_models/discriminator_%d.pth" % epoch)
+    

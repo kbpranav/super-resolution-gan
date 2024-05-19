@@ -1,3 +1,6 @@
 data/DIV2K_train_HR.zip
 data/
 src/__pycache__/models.cpython-38.pyc
+src/images
+src/saved_models
+src/__pycache__/
